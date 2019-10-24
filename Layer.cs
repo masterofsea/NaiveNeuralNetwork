@@ -9,10 +9,11 @@ namespace NaiveNeuralNetwork
     public sealed class Layer
     {
         public Neuron[] Neurons { get; }
-        public Int32 Count => Neurons?.Length ?? 0;
-
+        public Int32 NeuronsCount => Neurons?.Length ?? 0;
+        public NeuronType NType { get; set; }
         public Layer(Neuron[] neurons, NeuronType type = NeuronType.Hidden)
         {
+            NType = type;
             Neurons = neurons;
         }
         public Double[] GetSignals()
@@ -24,6 +25,10 @@ namespace NaiveNeuralNetwork
             }
 
             return result;
+        }
+        public override string ToString()
+        {
+            return NType.ToString();
         }
     }
 }

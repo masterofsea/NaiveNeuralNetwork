@@ -11,6 +11,8 @@ namespace NaiveNeuralNetwork
         public List<Layer> Layers { get; }
         public Topology Topology{ get; }
 
+        
+
         public NeuralNetwork(Topology topology)
         {
             Topology = topology;
@@ -24,7 +26,7 @@ namespace NaiveNeuralNetwork
         private void CreateOutputLayer()
         {
             var outputNeurons = new Neuron[Topology.OutputCount];
-            var lastLayerNeuronsCount = Layers.Last().Count;
+            var lastLayerNeuronsCount = Layers.Last().NeuronsCount;
             for (Int32 i = 0; i < outputNeurons.Length; ++i)
             {
                 outputNeurons[i] = new Neuron(lastLayerNeuronsCount, NeuronType.Input);
@@ -38,7 +40,7 @@ namespace NaiveNeuralNetwork
             for(Int32 i = 0; i < Topology.HiddenLayers.Length; ++i)
             {
                 var hiddenNeurons = new Neuron[Topology.HiddenLayers[i]];
-                var lastLayerNeuronsCount = Layers.Last().Count;
+                var lastLayerNeuronsCount = Layers.Last().NeuronsCount;
 
                 for (Int32 j = 0; j < hiddenNeurons.Length; ++j)
                 {
@@ -66,9 +68,50 @@ namespace NaiveNeuralNetwork
             FeedForwardAllLayersAfterInput();
             if (Topology.OutputCount == 1) return Layers.Last().Neurons[0];
             else return Layers.Last().Neurons.OrderByDescending(n => n.Output).First();
-            
-                
-            
+        }
+        public Double Learn(List<Tuple<Double, Double[]>> dataset, Int32 epoch)
+        {
+            var error = 0.0;
+            for(Int32 i = 0; i < epoch; ++i)
+            {
+                foreach(var data in dataset)
+                {
+                    error += BackPropagation(data.Item1, data.Item2);
+                }
+            }
+
+            var result = error / epoch;
+            return result;
+        }
+        private Double BackPropagation(Double expected, Double[] inputs)
+        {
+            var actual = FeedForward(inputs).Output;
+            var difference = actual - expected;
+
+            foreach(var neuron in Layers.Last().Neurons)
+            {
+                neuron.Learn(difference, Topology.LearningRate);
+            }
+
+            for(Int32 i = Layers.Count - 2; i >= 0; --i)
+            {
+                var layer = Layers[i];
+                var layerPrev = Layers[i + 1];
+                for(Int32 j = 0; j < layer.NeuronsCount; ++j)
+                {
+                    var neuron = layer.Neurons[j];
+                    for(Int32 k = 0; k < layerPrev.NeuronsCount; ++k)
+                    {
+                        var neuronPrev = layerPrev.Neurons[k];
+                        var error = neuronPrev.Weights[i];
+                        neuron.Learn(error, Topology.LearningRate);
+                    }
+                }
+            }
+            var result = difference * difference;
+
+            return result;
+
         }
 
         private void FeedForwardAllLayersAfterInput()
