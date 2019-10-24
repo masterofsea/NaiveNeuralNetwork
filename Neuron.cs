@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NaiveNeuralNetwork
 {
-    internal sealed class Neuron
+    public sealed class Neuron
     {
         public Double[] Weights { get; }
         public NeuronType NType { get; }
@@ -16,11 +16,8 @@ namespace NaiveNeuralNetwork
             Random rnd = new Random();
             NType = type;
             Weights = new Double[inputCount];
-            for(Int32 i = 0; i < inputCount; ++i)
-            {
-                Weights[i] = rnd.NextDouble() * 2.0 - 1.0;
-            }
-        }
+            
+        }       
         public Double FeedForward(Double[] inputs)
         {
             if (inputs.Length != Weights.Length) throw new Exception("Массив входных значений должен быть равен числу входов");

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NaiveNeuralNetwork
 {
-    enum NeuronType
+    public enum NeuronType
     {
         Input = 0,
         Hidden = 1,
