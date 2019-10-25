@@ -1,34 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
-namespace NaiveNeuralNetwork
+namespace NeuralNetworks
 {
-    public sealed class Layer
+    public class Layer
     {
-        public Neuron[] Neurons { get; }
-        public Int32 NeuronsCount => Neurons?.Length ?? 0;
-        public NeuronType NType { get; set; }
-        public Layer(Neuron[] neurons, NeuronType type = NeuronType.Hidden)
-        {
-            NType = type;
-            Neurons = neurons;
-        }
-        public Double[] GetSignals()
-        {
-            var result = new Double[Neurons.Length];
-            for(Int32 i = 0; i < Neurons.Length; ++i)
-            {
-                result[i] = Neurons[i].Output;
-            }
+        public List<Neuron> Neurons { get; }
+        public int NeuronCount => Neurons?.Count ?? 0;
+        public NeuronType Type;
 
+        public Layer(List<Neuron> neurons, NeuronType type = NeuronType.Normal)
+        {
+            // TODO: проверить все входные нейроны на соответствие типу
+
+            Neurons = neurons;
+            Type = type;
+        }
+
+        public List<double> GetSignals()
+        {
+            var result = new List<double>();
+            foreach (var neuron in Neurons)
+            {
+                result.Add(neuron.Output);
+            }
             return result;
         }
+
         public override string ToString()
         {
-            return NType.ToString();
+            return Type.ToString();
         }
     }
 }

@@ -1,25 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
-namespace NaiveNeuralNetwork
+namespace NeuralNetworks
 {
-    class Topology
+    public class Topology
     {
-        public Int32 InputCount { get; }
-        public Int32 OutputCount { get; }
-        public Int32[] HiddenLayers { get; }
-        public Double LearningRate { get; set; }
+        public int InputCount { get; }
+        public int OutputCount { get; }
+        public double LearningRate { get; }
+        public List<int> HiddenLayers { get; }
 
-        public Topology(Int32 inputCount, Int32 outputCount, Double learningRate = 0.1, params Int32[] layers)
+        public Topology(int inputCount, int outputCount, double learningRate, params int[] layers)
         {
             InputCount = inputCount;
             OutputCount = outputCount;
-            HiddenLayers = layers;
             LearningRate = learningRate;
-
-    }
+            HiddenLayers = new List<int>();
+            HiddenLayers.AddRange(layers);
+        }
     }
 }

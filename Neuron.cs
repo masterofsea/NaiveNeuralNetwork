@@ -1,84 +1,103 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace NaiveNeuralNetwork
+namespace NeuralNetworks
 {
-    public sealed class Neuron
+    public class Neuron
     {
-        public Double[] Weights { get; }
-        public Double[] Inputs { get; }
-        public NeuronType NType { get; }
+        public List<double> Weights { get; }
+        public List<double> Inputs { get; }
+        public NeuronType NeuronType { get; }
         public double Output { get; private set; }
-        public Double Delta { get; private set; }
-        public Neuron(Int32 inputCount, NeuronType type= NeuronType.Hidden)
-        {
-            Random rnd = new Random();
-            NType = type;
-            Weights = new Double[inputCount];
-            if (NType != NeuronType.Input)
-            {
-                for (Int32 i = 0; i < inputCount; ++i)
-                    Weights[i] = rnd.NextDouble() * 2 - 1;                
-            }
-            else
-            {
-                for (Int32 i = 0; i < inputCount; ++i)
-                    Weights[i] = 1;
-            }
-            
-            Inputs = new Double[inputCount];
+        public double Delta { get; private set; }
 
-        }       
-        public Double FeedForward(Double[] inputs)
+        public Neuron(int inputCount, NeuronType type = NeuronType.Normal)
         {
-            if (inputs.Length != Weights.Length) throw new Exception("Массив входных значений должен быть равен числу входов");
-            for(Int32 i = 0; i < Inputs.Length; ++i)
+            NeuronType = type;
+            Weights = new List<double>();
+            Inputs = new List<double>();
+
+            InitWeightsRandomValue(inputCount);
+        }
+
+        private void InitWeightsRandomValue(int inputCount)
+        {
+            var rnd = new Random();
+
+            for (int i = 0; i < inputCount; i++)
+            {
+                if (NeuronType == NeuronType.Input)
+                {
+                    Weights.Add(1);
+                }
+                else
+                {
+                    Weights.Add(rnd.NextDouble());
+                }
+                Inputs.Add(0);
+            }
+        }
+
+        public double FeedForward(List<double> inputs)
+        {
+            for (int i = 0; i < inputs.Count; i++)
             {
                 Inputs[i] = inputs[i];
             }
-            Double accumulator = 0.0;
-            for (Int32 i = 0; i < inputs.Length; ++i) accumulator += inputs[i] * Weights[i];
-            if(NType != NeuronType.Input)
+
+            var sum = 0.0;
+            for (int i = 0; i < inputs.Count; i++)
             {
-                Output = Sigm(accumulator);
+                sum += inputs[i] * Weights[i];
+            }
+
+            if (NeuronType != NeuronType.Input)
+            {
+                Output = Sigmoid(sum);
             }
             else
             {
-                Output = accumulator;
+                Output = sum;
             }
-            
+
             return Output;
         }
-        public void Learn(Double error, Double learningRate)
-        {
-            if (NType == NeuronType.Input) return;
 
-            Delta = error * DerivativeOfSigm(Output);
-            for(Int32 i = 0; i < Weights.Length; ++i)
+        private double Sigmoid(double x)
+        {
+            var result = 1.0 / (1.0 + Math.Pow(Math.E, -x));
+            return result;
+        }
+
+        private double SigmoidDx(double x)
+        {
+            var sigmoid = Sigmoid(x);
+            var result = sigmoid / (1 - sigmoid);
+            return result;
+        }
+
+        public void Learn(double error, double learningRate)
+        {
+            if (NeuronType == NeuronType.Input)
             {
-                Weights[i] -= Inputs[i] * Delta * learningRate;
+                return;
             }
-       }
-        private Double Sigm(Double value)
-        {
-            return (1.0 / (1 + Math.Pow(Math.E, -value)));
-        }
-        private Double DerivativeOfSigm(Double value)
-        {
-            var sigmoid = Sigm(value);
-            return sigmoid * (1 - sigmoid);
-        }
 
+            Delta = error * SigmoidDx(Output);
+
+            for (int i = 0; i < Weights.Count; i++)
+            {
+                var weight = Weights[i];
+                var input = Inputs[i];
+
+                var newWeigth = weight - input * Delta * learningRate;
+                Weights[i] = newWeigth;
+            }
+        }
 
         public override string ToString()
         {
             return Output.ToString();
         }
-
-        
-
     }
 }

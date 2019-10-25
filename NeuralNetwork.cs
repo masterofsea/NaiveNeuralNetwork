@@ -4,140 +4,228 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NaiveNeuralNetwork
+namespace NeuralNetworks
 {
-    class NeuralNetwork
+    public class NeuralNetwork
     {
+        public Topology Topology { get; }
         public List<Layer> Layers { get; }
-        public Topology Topology{ get; }
-
-        
 
         public NeuralNetwork(Topology topology)
         {
             Topology = topology;
+
             Layers = new List<Layer>();
 
-            CreateInputLayers();
+            CreateInputLayer();
             CreateHiddenLayers();
             CreateOutputLayer();
         }
 
-        private void CreateOutputLayer()
-        {
-            var outputNeurons = new Neuron[Topology.OutputCount];
-            var lastLayerNeuronsCount = Layers.Last().NeuronsCount;
-            for (Int32 i = 0; i < outputNeurons.Length; ++i)
-            {
-                outputNeurons[i] = new Neuron(lastLayerNeuronsCount, NeuronType.Input);
-            }
-
-            var outputLayer = new Layer(outputNeurons, NeuronType.Output);
-            Layers.Add(outputLayer);
-        }
-        private void CreateHiddenLayers()
-        {
-            for(Int32 i = 0; i < Topology.HiddenLayers.Length; ++i)
-            {
-                var hiddenNeurons = new Neuron[Topology.HiddenLayers[i]];
-                var lastLayerNeuronsCount = Layers.Last().NeuronsCount;
-
-                for (Int32 j = 0; j < hiddenNeurons.Length; ++j)
-                {
-                    hiddenNeurons[i] = new Neuron(lastLayerNeuronsCount, NeuronType.Input);
-                }
-
-                var hiddenLayer = new Layer(hiddenNeurons);
-                Layers.Add(hiddenLayer);
-            }            
-        }
-        private void CreateInputLayers()
-        {
-            var inputNeurons = new Neuron[Topology.InputCount];
-            for(Int32 i = 0; i < inputNeurons.Length; ++i)
-            {
-                inputNeurons[i] = new Neuron(1, NeuronType.Input);
-            }
-
-            var inputLayer = new Layer(inputNeurons, NeuronType.Input);
-            Layers.Add(inputLayer);
-        }
-        public Neuron FeedForward(Double[] inputSignals)
+        public Neuron Predict(params double[] inputSignals)
         {
             SendSignalsToInputNeurons(inputSignals);
             FeedForwardAllLayersAfterInput();
-            if (Topology.OutputCount == 1) return Layers.Last().Neurons[0];
-            else return Layers.Last().Neurons.OrderByDescending(n => n.Output).First();
+
+            if (Topology.OutputCount == 1)
+            {
+                return Layers.Last().Neurons[0];
+            }
+            else
+            {
+                return Layers.Last().Neurons.OrderByDescending(n => n.Output).First();
+            }
         }
-        public Double Learn(List<Tuple<Double, Double[]>> dataset, Int32 epoch)
+
+        public double Learn(double[] expected, double[,] inputs, int epoch)
         {
             var error = 0.0;
-            for(Int32 i = 0; i < epoch; ++i)
+            for (int i = 0; i < epoch; i++)
             {
-                foreach(var data in dataset)
+                for (int j = 0; j < expected.Length; j++)
                 {
-                    error += BackPropagation(data.Item1, data.Item2);
+                    var output = expected[j];
+                    var input = GetRow(inputs, j);
+
+                    error += Backpropagation(output, input);
                 }
             }
 
             var result = error / epoch;
             return result;
         }
-        private Double BackPropagation(Double expected, Double[] inputs)
-        {
-            var actual = FeedForward(inputs).Output;
-            var difference = actual - expected;
 
-            foreach(var neuron in Layers.Last().Neurons)
+        public static double[] GetRow(double[,] matrix, int row)
+        {
+            var columns = matrix.GetLength(1);
+            var array = new double[columns];
+            for (int i = 0; i < columns; ++i)
+                array[i] = matrix[row, i];
+            return array;
+        }
+
+        private double[,] Scalling(double[,] inputs)
+        {
+            var result = new double[inputs.GetLength(0), inputs.GetLength(1)];
+
+            for (int column = 0; column < inputs.GetLength(1); column++)
+            {
+                var min = inputs[0, column];
+                var max = inputs[0, column];
+
+                for (int row = 1; row < inputs.GetLength(0); row++)
+                {
+                    var item = inputs[row, column];
+
+                    if (item < min)
+                    {
+                        min = item;
+                    }
+
+                    if (item > max)
+                    {
+                        max = item;
+                    }
+                }
+
+                var divider = max - min;
+                for (int row = 1; row < inputs.GetLength(0); row++)
+                {
+                    result[row, column] = (inputs[row, column] - min) / divider;
+                }
+            }
+
+            return result;
+        }
+
+        private double[,] Normalization(double[,] inputs)
+        {
+            var result = new double[inputs.GetLength(0), inputs.GetLength(1)];
+
+            for (int column = 0; column < inputs.GetLength(1); column++)
+            {
+                // Среднее значение сигнала нейрона.
+                var sum = 0.0;
+                for (int row = 0; row < inputs.GetLength(0); row++)
+                {
+                    sum += inputs[row, column];
+                }
+                var average = sum / inputs.GetLength(0);
+
+                // Стандартное квадратичное отклонение нейрона.
+                var error = 0.0;
+                for (int row = 0; row < inputs.GetLength(0); row++)
+                {
+                    error += Math.Pow((inputs[row, column] - average), 2);
+                }
+                var standardError = Math.Sqrt(error / inputs.GetLength(0));
+
+                for (int row = 0; row < inputs.GetLength(0); row++)
+                {
+                    result[row, column] = (inputs[row, column] - average) / standardError;
+                }
+            }
+
+            return result;
+        }
+
+        private double Backpropagation(double exprected, params double[] inputs)
+        {
+            var actual = Predict(inputs).Output;
+
+            var difference = actual - exprected;
+
+            foreach (var neuron in Layers.Last().Neurons)
             {
                 neuron.Learn(difference, Topology.LearningRate);
             }
 
-            for(Int32 i = Layers.Count - 2; i >= 0; --i)
+            for (int j = Layers.Count - 2; j >= 0; j--)
             {
-                var layer = Layers[i];
-                var layerPrev = Layers[i + 1];
-                for(Int32 j = 0; j < layer.NeuronsCount; ++j)
+                var layer = Layers[j];
+                var previousLayer = Layers[j + 1];
+
+                for (int i = 0; i < layer.NeuronCount; i++)
                 {
-                    var neuron = layer.Neurons[j];
-                    for(Int32 k = 0; k < layerPrev.NeuronsCount; ++k)
+                    var neuron = layer.Neurons[i];
+
+                    for (int k = 0; k < previousLayer.NeuronCount; k++)
                     {
-                        var neuronPrev = layerPrev.Neurons[k];
-                        var error = neuronPrev.Weights[i];
+                        var previousNeuron = previousLayer.Neurons[k];
+                        var error = previousNeuron.Weights[i] * previousNeuron.Delta;
                         neuron.Learn(error, Topology.LearningRate);
                     }
                 }
             }
+
             var result = difference * difference;
-
             return result;
-
         }
 
         private void FeedForwardAllLayersAfterInput()
         {
-            for (Int32 i = 1; i < Layers.Count; ++i)
+            for (int i = 1; i < Layers.Count; i++)
             {
-                var previousLayerSignals = Layers[i - 1].GetSignals();
-                var currentLayer = Layers[i];
+                var layer = Layers[i];
+                var previousLayerSingals = Layers[i - 1].GetSignals();
 
-                foreach (var neuron in currentLayer.Neurons)
+                foreach (var neuron in layer.Neurons)
                 {
-                    neuron.FeedForward(previousLayerSignals);
+                    neuron.FeedForward(previousLayerSingals);
                 }
             }
         }
-        private void SendSignalsToInputNeurons(Double[] inputSignals)
+
+        private void SendSignalsToInputNeurons(params double[] inputSignals)
         {
-            if (inputSignals.Length != Topology.InputCount)
-                throw new Exception("Число входных сигналов должно быть равно числу нейронов входного слоя нейронной сети");
-            for (Int32 i = 0; i < inputSignals.Length; ++i)
+            for (int i = 0; i < inputSignals.Length; i++)
             {
-                var signal = new Double[] { inputSignals[i] };
+                var signal = new List<double>() { inputSignals[i] };
                 var neuron = Layers[0].Neurons[i];
 
                 neuron.FeedForward(signal);
             }
+        }
+
+        private void CreateOutputLayer()
+        {
+            var outputNeurons = new List<Neuron>();
+            var lastLayer = Layers.Last();
+            for (int i = 0; i < Topology.OutputCount; i++)
+            {
+                var neuron = new Neuron(lastLayer.NeuronCount, NeuronType.Output);
+                outputNeurons.Add(neuron);
+            }
+            var outputLayer = new Layer(outputNeurons, NeuronType.Output);
+            Layers.Add(outputLayer);
+        }
+
+        private void CreateHiddenLayers()
+        {
+            for (int j = 0; j < Topology.HiddenLayers.Count; j++)
+            {
+                var hiddenNeurons = new List<Neuron>();
+                var lastLayer = Layers.Last();
+                for (int i = 0; i < Topology.HiddenLayers[j]; i++)
+                {
+                    var neuron = new Neuron(lastLayer.NeuronCount);
+                    hiddenNeurons.Add(neuron);
+                }
+                var hiddenLayer = new Layer(hiddenNeurons);
+                Layers.Add(hiddenLayer);
+            }
+        }
+
+        private void CreateInputLayer()
+        {
+            var inputNeurons = new List<Neuron>();
+            for (int i = 0; i < Topology.InputCount; i++)
+            {
+                var neuron = new Neuron(1, NeuronType.Input);
+                inputNeurons.Add(neuron);
+            }
+            var inputLayer = new Layer(inputNeurons, NeuronType.Input);
+            Layers.Add(inputLayer);
         }
     }
 }
